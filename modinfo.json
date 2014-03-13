@@ -14,9 +14,6 @@
         "framework"
     ],
     "scenes": {
-        "global_mod_list": [
-            "coui://ui/mods/rEventHandler/rEventHandler.js"
-        ],
         "live_game": [
             "coui://ui/mods/rEventHandler/rEventHandler.js"
         ]
