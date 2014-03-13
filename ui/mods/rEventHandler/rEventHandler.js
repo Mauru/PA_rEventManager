@@ -1,3 +1,16 @@
+/*======================================================================
+PROCESS EVENT HANDLING "FRAMEWORK" v 0.1
+------------------------------------------------------------------------
+usage: rEvents.register_callback(message,callback);
+
+valid handlers to play with can be found in "./media/alpha/live_game/live_game.js"
+"selection" is one, but there are a couple of others...
+You can disect the messages further by disecting rEvents.read_message
+and rEvents.process_message repectively.
+
+Most of the processes were abstracted from "./media/js/common.js"
+That would be the place to check if something breaks after a patch
+=======================================================================*/
 var rEventHandler=function(){
 with(this){
 var COBJ=this;
@@ -134,7 +147,7 @@ var COBJ=this;
    //function for interpreting a return from the process : (<-app.registerWithCoherent)
    this.read_message=function(message, payload) {	   
 	   	//you could theoretically modify the payload here...
-	   console.log('[rEventHandler] handling process : '+message);
+	   //console.log('[rEventHandler] handling process : '+message); //uncomment this to track events
 	    
 	    //global handlers : execute standard API calls
 	    if (handlers[message]) {
