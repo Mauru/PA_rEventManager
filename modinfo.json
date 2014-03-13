@@ -1,0 +1,26 @@
+{
+    "context": "client",
+    "identifier": "com.pa.mauru.rEventHandler",
+    "display_name": "Event Handler Framework",
+    "description": "A Framework for handling process events sent to the engine",
+    "author": "Mauru",
+    "version": "0.5",
+    "signature": "not yet implemented",
+    "priority": 10,
+    "enabled": true,
+    "id": "rEventHandler",
+    "forum": "https://forums.uberent.com/threads/wip-blueprint-info-framework.56213/",
+    "category": [
+        "framework"
+    ],
+    "scenes": {
+        "global_mod_list": [
+            "coui://ui/mods/rEventHandler/rEventHandler.js"
+        ],
+        "live_game": [
+            "coui://ui/mods/rEventHandler/rEventHandler.js"
+        ]
+    },
+    "date": "2014/03/13",
+    "build": "62168"
+}
