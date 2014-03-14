@@ -59,7 +59,7 @@ var mEventHandler = function() {
 			//just cycle through all the callbacks...
 			while (COBJ.mod_requests_inject[message].length > 0) {
 				var callback = COBJ.mod_requests_inject[message].pop();
-				result=callback(payload,c_count);
+				result=callback(message,payload,c_count);
 			}
 			return result;			
 		};
@@ -113,7 +113,7 @@ var mEventHandler = function() {
 		        engine.call("conn_send_message", JSON.stringify(m));
 		    }	
 		    
-		    //how to handle API to Engine handshake events, this could potentially inehrit additional hooks
+		    //how to handle API to Engine handshake events, this could potentially inherit additional hooks
 		    app.hello = function(succeed, fail) {
 		    	console.log('[mEventHandler] handshake requested');
 		        model.send_message('hello', {}, function(success, response) {
@@ -125,13 +125,23 @@ var mEventHandler = function() {
 		        });
 		    };
 		};
-
+		
+		//fake a message to the API
+		this.fake_message=function(message,payload,target){
+			if(target=='local'&&handlers[message]){
+				handlers[message](payload);
+			}else if(target=='global'&&globalHandlers[message]){
+				globalHandlers[message](payload);
+			}else if(target=='mod'){
+				COBJ.handle_event(message, payload);
+			}else{
+				COBJ.read_message(message,payload);
+			}
+		}
+		
 		// function for interpreting a return from the process : (<-app.registerWithCoherent)
 		this.read_message = function(message, payload) {
 			// console.log('[mEventHandler] handling process : '+message); //uncomment this to track events			
-			
-			var skip=false;
-			
 			//if necessary modify the payload here...
 			if(COBJ.mod_requests_inject[message]){
 				var result=COBJ.handle_injection(message,payload);
