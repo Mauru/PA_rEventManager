@@ -11,7 +11,7 @@ and rEvents.process_message repectively.
 Most of the processes were abstracted from "./media/js/common.js"
 That would be the place to check if something breaks after a patch
 =======================================================================*/
-var rEventHandler=function(){
+var mEventHandler=function(){
 with(this){
 var COBJ=this;
 	//properties
@@ -40,114 +40,17 @@ var COBJ=this;
 
 	//create the initial engine hook, lucky there is no private|static|final...
 	this.init=function(){
-		app.registerWithCoherent=function(model,handlers){
-			COBJ.register_coherent(model,handlers);
-		};
-	};	
-	
-	//overide (app.registerWithCoherent) : overides a number of functions from common.js
-	this.register_coherent=function(model,handlers){
-	    var response_key = Math.floor(Math.random() * 65536);
-	    var responses = {};
-	    
-	    //define response function
-	    globalHandlers.response = function(msg) {
-	        if (!msg.hasOwnProperty('key'))
-	            return;
-	        var key = msg.key;
-	        delete msg.key;
-	        if (!responses[key])
-	            return;
-
-	        var respond = responses[key];
-	        delete responses[key];
-	        respond(msg.status === 'success', msg.result);
-	    };
-	    
 	    //create callback for engine process
 	    engine.on("process_message", COBJ.process_message);
 
 	    //create callback for signal
 	    engine.on("process_signal", COBJ.process_signal);
-	    
-	    //define method the engine uses to place a request
-	    engine.asyncCall = function (/* ... */) {
-	        // console.log('in engine.asyncCall');
-	        // console.log(arguments);
-	        var request = new $.Deferred();
-	        engine.call.apply(engine, arguments).then(
-	            function (tag) {
-	                // console.log('in engine.asyncCall .then handler, tag=', tag);
-	                COBJ.async_requests[tag] = request;
-	            }
-	        );
-	        return request.promise();
-	    };
-	    
-	    //register result function
-	    engine.on("async_result",COBJ.async_result);
-	    
-	    //register send_message function
-	    model.send_message = function (message, payload, respond) {
-	        var m = {};
-	        if (payload)
-	            m.payload = payload;
-
-	        m.message_type = message;
-	        if (respond)
-	        {
-	            m.response_key = ++response_key;
-	            responses[m.response_key] = respond;
-	        }
-
-	        engine.call("conn_send_message", JSON.stringify(m));
-	    }
-
-	    //register disconnect function
-	    model.disconnect = function () {
-	        engine.call("reset_game_state");
-	    }
-
-	    //register exit function
-	    model.exit = function () {
-	        engine.call("exit");
-	    }
-
-	    //register handshake
-	    app.hello = function(succeed, fail) {
-	        model.send_message('hello', {}, function(success, response) {
-	            if (success)
-	                succeed(response);
-	            else
-	                fail(response);
-	        });
-	    };
-	    
-	    //tell the API we are ready
-	    api.Panel.ready(_.keys(handlers).concat(_.keys(globalHandlers)));
-	};
+	};	
 	
-	//handle a request result (<-app.registerWithCoherent)
-	function async_result(tag, success /* , ... */) {
-	   var request, args;
-	   // console.log(arguments);
-	   request = COBJ.async_requests[tag];
-	   delete COBJ.async_requests[tag];
-	   
-	   if (request) {
-	       args = Array.slice(arguments, 2, arguments.length);
-	       if (success) {
-	           request.resolve.apply(request, args);
-	       } else {
-	           request.reject.apply(request, args);
-	       }
-	   }
-	};
-   
    //function for interpreting a return from the process : (<-app.registerWithCoherent)
    this.read_message=function(message, payload) {	   
 	   	//you could theoretically modify the payload here...
-	   //console.log('[rEventHandler] handling process : '+message); //uncomment this to track events
+	   console.log('[mEventHandler] handling process : '+message); //uncomment this to track events
 	    
 	    //global handlers : execute standard API calls
 	    if (handlers[message]) {
@@ -158,7 +61,7 @@ var COBJ=this;
 	    } 
 	    else{
 	    	//called if no handler could be found
-	        console.log('[rEventHandler] Unhandled msg:' + message);
+	        console.log('[mEventHandler] Unhandled msg:' + message);
 	    }
 	    
 	    //internal mod payload : these calls are made AFTER standard API calls
@@ -191,6 +94,6 @@ var COBJ=this;
 }	
 };
 
-var rEvents=new rEventHandler();
-rEvents.init();
-console.log('[rEventHandler] Successfully borrowed engine communication');
+var mEvents=new mEventHandler();
+mEvents.init();
+console.log('[mEventHandler] Successfully borrowed engine communication');
