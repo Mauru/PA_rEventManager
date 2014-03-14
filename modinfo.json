@@ -1,10 +1,10 @@
 {
     "context": "client",
     "identifier": "com.pa.mauru.mEventHandler",
-    "display_name": "Event Handler Framework",
+    "display_name": "Process-Event-Handler Framework",
     "description": "A Framework for handling process events sent to the engine",
     "author": "Mauru",
-    "version": "0.5",
+    "version": "0.2",
     "signature": "not yet implemented",
     "priority": 10,
     "enabled": true,
