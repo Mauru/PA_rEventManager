@@ -19,6 +19,8 @@ var mEventHandler = function() {
 		this.mod_requests_inject = new Array(); //requests for injecting messages to be sent
 		this.async_requests={}; //tracking asynchronous requests
 
+		this.enable_inject=false;//disable injection for now
+		
 		// register a regular callback
 		this.register_callback = function(message, callback) {
 			if (!COBJ.mod_requests[message]) {
@@ -63,7 +65,155 @@ var mEventHandler = function() {
 			}
 			return result;			
 		};
+		
+		//overides app.rehisterWithCoherent
+		this.init_overide=function(){
+			app.registerWithCoherent = function (model, handlers) {
+	
+			    var response_key = Math.floor(Math.random() * 65536);
+			    var responses = {};
+			    globalHandlers.response = function(msg) {
+			        if (!msg.hasOwnProperty('key'))
+			            return;
+			        var key = msg.key;
+			        delete msg.key;
+			        if (!responses[key])
+			            return;
+	
+			        var respond = responses[key];
+			        delete responses[key];
+			        respond(msg.status === 'success', msg.result);
+			    };
+			    
+			    function read_message(message, payload) {
 
+					//if necessary modify the payload here...
+					if(COBJ.mod_requests_inject[message]){
+						var result=COBJ.handle_injection(message,payload);
+						if(result){
+							if(result.abandon){//abandon the callback process here, we don't want this result to reach the API
+								return false;
+							}
+							if(result.message&&result.payload){//we want to modify the callback then return it to the event chain
+								var message=result.message;
+								var payload=result.payload;
+							}
+						}
+					}
+					
+					//continue with default script
+			    	
+			    	
+			        if (handlers[message]) {
+			            //console.log('handling:' + message);
+			            handlers[message](payload);
+			        }
+			        else if (globalHandlers[message]) {
+			            globalHandlers[message](payload);
+			        } 
+			        else
+			            console.log('unhandled msg:' + message);
+			        
+			        
+					// internal mod payload : these calls are made AFTER standard API calls
+					COBJ.handle_event(message, payload);
+			    }
+	
+			    function process_message(string) {
+			        var message;
+			        try {
+			            message = JSON.parse(string);
+			        } catch (e) {
+			            console.log('process_message: JSON parsing error');
+			            console.log(string);
+			            return;
+			        }
+	
+			        var payload = message.payload;
+			        if (!payload) {
+			            payload = _.clone(message);
+			            delete payload.message_type;
+			        }
+			        read_message(message.message_type, payload);
+			    }
+			    engine.on("process_message", process_message);
+	
+			    function process_signal(string) {
+	
+			        read_message(string, {});
+			    }
+			    engine.on("process_signal", process_signal);	
+	
+			    var async_requests = {};
+	
+			    engine.asyncCall = function (/* ... */) {
+			        // console.log('in engine.asyncCall');
+			        // console.log(arguments);
+			        var request = new $.Deferred();
+			        engine.call.apply(engine, arguments).then(
+			            function (tag) {
+			                // console.log('in engine.asyncCall .then handler, tag=', tag);
+			                async_requests[tag] = request;
+			            }
+			        );
+			        return request.promise();
+			    };
+	
+			    function async_result(tag, success /* , ... */) {
+			        var request, args;
+			        // console.log('in async_result');
+			        // console.log(arguments);
+			        request = async_requests[tag];
+			        delete async_requests[tag];
+			        if (request) {
+			            args = Array.slice(arguments, 2, arguments.length);
+			            if (success) {
+			                request.resolve.apply(request, args);
+			            } else {
+			                request.reject.apply(request, args);
+			            }
+			        }
+			    }
+			    engine.on("async_result", async_result);
+	
+	
+			    model.send_message = function (message, payload, respond) {
+	
+			        var m = {};
+			        if (payload)
+			            m.payload = payload;
+	
+			        m.message_type = message;
+			        if (respond)
+			        {
+			            m.response_key = ++response_key;
+			            responses[m.response_key] = respond;
+			        }
+	
+			        engine.call("conn_send_message", JSON.stringify(m));
+			    }
+	
+			    model.disconnect = function () {
+			        engine.call("reset_game_state");
+			    }
+	
+			    model.exit = function () {
+			        engine.call("exit");
+			    }
+	
+			    app.hello = function(succeed, fail) {
+			        model.send_message('hello', {}, function(success, response) {
+			            if (success)
+			                succeed(response);
+			            else
+			                fail(response);
+			        });
+			    };
+			    
+			    api.Panel.ready(_.keys(handlers).concat(_.keys(globalHandlers)));
+			};
+		};
+		
 		// create the initial engine hook, lucky there is no private|static|final...
 		this.init_incoming = function() {
 			// create callback for engine process
@@ -141,7 +291,7 @@ var mEventHandler = function() {
 		
 		// function for interpreting a return from the process : (<-app.registerWithCoherent)
 		this.read_message = function(message, payload) {
-			// console.log('[mEventHandler] handling process : '+message); //uncomment this to track events			
+			console.log('[mEventHandler] handling process : '+message); //uncomment this to track events			
 			//if necessary modify the payload here...
 			if(COBJ.mod_requests_inject[message]){
 				var result=COBJ.handle_injection(message,payload);
@@ -156,6 +306,7 @@ var mEventHandler = function() {
 				}
 			}
 
+			/* Does not execute rest
 			// global handlers : execute standard API calls
 			if (handlers[message]) {
 				handlers[message](payload);
@@ -165,7 +316,8 @@ var mEventHandler = function() {
 				// called if no handler could be found
 				console.log('[mEventHandler] Unhandled msg:' + message);
 			}
-
+			*/
+		
 			// internal mod payload : these calls are made AFTER standard API calls
 			COBJ.handle_event(message, payload);
 		};
@@ -219,6 +371,5 @@ var mEventHandler = function() {
 };
 
 var mEvents = new mEventHandler();
-mEvents.init_incoming();
-mEvents.init_outgoing();
+mEvents.init_overide();
 console.log('[mEventHandler] Successfully "borrowed" engine communication');
